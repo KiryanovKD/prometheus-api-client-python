@@ -3,7 +3,7 @@
 __title__ = "prometheus-connect"
 __version__ = "0.5.5"
 
-from .prometheus_connect import *  # noqa F403
+from .prometheus_async_connect import *  # noqa F403
 from .metric import Metric  # noqa F401
 from .metrics_list import MetricsList  # noqa F401
 from .metric_snapshot_df import MetricSnapshotDataFrame  # noqa F401

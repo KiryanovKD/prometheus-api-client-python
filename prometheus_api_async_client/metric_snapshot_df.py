@@ -3,7 +3,7 @@ from pandas import DataFrame, to_datetime
 from pandas._typing import Axes, Dtype
 from typing import Optional, Sequence
 
-from prometheus_api_client.exceptions import MetricValueConversionError
+from prometheus_api_async_client.exceptions import MetricValueConversionError
 
 
 class MetricSnapshotDataFrame(DataFrame):

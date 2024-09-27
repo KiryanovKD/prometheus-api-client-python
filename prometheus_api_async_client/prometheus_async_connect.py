@@ -6,10 +6,7 @@ import json
 import logging
 import numpy
 from datetime import datetime, timedelta
-import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
-from requests import Session
+import aiohttp
 
 from .exceptions import PrometheusApiClientException
 
@@ -25,7 +22,7 @@ RETRY_BACKOFF_FACTOR = 1
 RETRY_ON_STATUS = [408, 429, 500, 502, 503, 504]
 
 
-class PrometheusConnect:
+class PrometheusAsyncConnect:
     """
     A Class for collection of metrics from a Prometheus Host.
 
@@ -47,10 +44,9 @@ class PrometheusConnect:
         url: str = "http://127.0.0.1:9090",
         headers: dict = None,
         disable_ssl: bool = False,
-        retry: Retry = None,
         auth: tuple = None,
         proxy: dict = None,
-        session: Session = None,
+        session: aiohttp.ClientSession = None,
     ):
         """Functions as a Constructor for the class PrometheusConnect."""
         if url is None:
@@ -61,26 +57,18 @@ class PrometheusConnect:
         self.prometheus_host = urlparse(self.url).netloc
         self._all_metrics = None
 
-        if retry is None:
-            retry = Retry(
-                total=MAX_REQUEST_RETRIES,
-                backoff_factor=RETRY_BACKOFF_FACTOR,
-                status_forcelist=RETRY_ON_STATUS,
-            )
-
         self.auth = auth
 
         if session is not None:
             self._session = session
         else:
-            self._session = requests.Session()
+            self._session = aiohttp.ClientSession()
             self._session.verify = not disable_ssl
 
         if proxy is not None:
             self._session.proxies = proxy
-        self._session.mount(self.url, HTTPAdapter(max_retries=retry))
 
-    def check_prometheus_connection(self, params: dict = None) -> bool:
+    async def check_prometheus_connection(self, params: dict = None) -> bool:
         """
         Check Promethus connection.
 
@@ -88,17 +76,15 @@ class PrometheusConnect:
             sent along with the API request.
         :returns: (bool) True if the endpoint can be reached, False if cannot be reached.
         """
-        response = self._session.get(
+        response = await self._session.get(
             "{0}/".format(self.url),
-            verify=self._session.verify,
             headers=self.headers,
             params=params,
             auth=self.auth,
-            cert=self._session.cert
         )
         return response.ok
 
-    def all_metrics(self, params: dict = None):
+    async def all_metrics(self, params: dict = None):
         """
         Get the list of all the metrics that the prometheus host scrapes.
 
@@ -113,7 +99,7 @@ class PrometheusConnect:
         self._all_metrics = self.get_label_values(label_name="__name__", params=params)
         return self._all_metrics
 
-    def get_label_names(self, params: dict = None):
+    async def get_label_names(self, params: dict = None):
         """
         Get a list of all labels.
 
@@ -125,24 +111,22 @@ class PrometheusConnect:
             (PrometheusApiClientException) Raises in case of non 200 response status code
         """
         params = params or {}
-        response = self._session.get(
+        response = await self._session.get(
             "{0}/api/v1/labels".format(self.url),
-            verify=self._session.verify,
             headers=self.headers,
             params=params,
             auth=self.auth,
-            cert=self._session.cert
         )
 
-        if response.status_code == 200:
-            labels = response.json()["data"]
+        if response.status == 200:
+            labels = (await response.json())["data"]
         else:
             raise PrometheusApiClientException(
-                "HTTP Status Code {} ({!r})".format(response.status_code, response.content)
+                "HTTP Status Code {} ({!r})".format(response.status, response.content)
             )
         return labels
 
-    def get_label_values(self, label_name: str, params: dict = None):
+    async def get_label_values(self, label_name: str, params: dict = None):
         """
         Get a list of all values for the label.
 
@@ -155,24 +139,22 @@ class PrometheusConnect:
             (PrometheusApiClientException) Raises in case of non 200 response status code
         """
         params = params or {}
-        response = self._session.get(
+        response = await self._session.get(
             "{0}/api/v1/label/{1}/values".format(self.url, label_name),
-            verify=self._session.verify,
             headers=self.headers,
             params=params,
             auth=self.auth,
-            cert=self._session.cert
         )
 
-        if response.status_code == 200:
-            labels = response.json()["data"]
+        if response.status == 200:
+            labels = (await response.json())["data"]
         else:
             raise PrometheusApiClientException(
-                "HTTP Status Code {} ({!r})".format(response.status_code, response.content)
+                "HTTP Status Code {} ({!r})".format(response.status, response.content)
             )
         return labels
 
-    def get_current_metric_value(
+    async def get_current_metric_value(
         self, metric_name: str, label_config: dict = None, params: dict = None
     ):
         r"""
@@ -206,24 +188,22 @@ class PrometheusConnect:
             query = metric_name
 
         # using the query API to get raw data
-        response = self._session.get(
+        response = await self._session.get(
             "{0}/api/v1/query".format(self.url),
             params={**{"query": query}, **params},
-            verify=self._session.verify,
             headers=self.headers,
             auth=self.auth,
-            cert=self._session.cert
         )
 
-        if response.status_code == 200:
-            data += response.json()["data"]["result"]
+        if response.status == 200:
+            data += (await response.json())["data"]["result"]
         else:
             raise PrometheusApiClientException(
-                "HTTP Status Code {} ({!r})".format(response.status_code, response.content)
+                "HTTP Status Code {} ({!r})".format(response.status, response.content)
             )
         return data
 
-    def get_metric_range_data(
+    async def get_metric_range_data(
         self,
         metric_name: str,
         label_config: dict = None,
@@ -292,7 +272,7 @@ class PrometheusConnect:
                 chunk_seconds = end - start
 
             # using the query API to get raw data
-            response = self._session.get(
+            response = await self._session.get(
                 "{0}/api/v1/query".format(self.url),
                 params={
                     **{
@@ -301,22 +281,21 @@ class PrometheusConnect:
                     },
                     **params,
                 },
-                verify=self._session.verify,
                 headers=self.headers,
                 auth=self.auth,
-                cert=self._session.cert
             )
-            if response.status_code == 200:
-                data += response.json()["data"]["result"]
+            if response.status == 200:
+                response_json = await response.json()
+                data += response_json["data"]["result"]
             else:
                 raise PrometheusApiClientException(
-                    "HTTP Status Code {} ({!r})".format(response.status_code, response.content)
+                    "HTTP Status Code {} ({!r})".format(response.status, response.content)
                 )
             if store_locally:
                 # store it locally
                 self._store_metric_values_local(
                     metric_name,
-                    json.dumps(response.json()["data"]["result"]),
+                    json.dumps(response_json["data"]["result"]),
                     start + chunk_seconds,
                 )
 
@@ -377,7 +356,7 @@ class PrometheusConnect:
         )
         return object_path
 
-    def custom_query(self, query: str, params: dict = None):
+    async def custom_query(self, query: str, params: dict = None):
         """
         Send a custom query to a Prometheus Host.
 
@@ -397,24 +376,22 @@ class PrometheusConnect:
         data = None
         query = str(query)
         # using the query API to get raw data
-        response = self._session.get(
+        response = await self._session.get(
             "{0}/api/v1/query".format(self.url),
             params={**{"query": query}, **params},
-            verify=self._session.verify,
             headers=self.headers,
             auth=self.auth,
-            cert=self._session.cert
         )
-        if response.status_code == 200:
-            data = response.json()["data"]["result"]
+        if response.status == 200:
+            data = (await response.json())["data"]["result"]
         else:
             raise PrometheusApiClientException(
-                "HTTP Status Code {} ({!r})".format(response.status_code, response.content)
+                "HTTP Status Code {} ({!r})".format(response.status, response.content)
             )
 
         return data
 
-    def custom_query_range(
+    async def custom_query_range(
         self, query: str, start_time: datetime, end_time: datetime, step: str, params: dict = None
     ):
         """
@@ -441,23 +418,21 @@ class PrometheusConnect:
         data = None
         query = str(query)
         # using the query_range API to get raw data
-        response = self._session.get(
+        response = await self._session.get(
             "{0}/api/v1/query_range".format(self.url),
             params={**{"query": query, "start": start, "end": end, "step": step}, **params},
-            verify=self._session.verify,
             headers=self.headers,
             auth=self.auth,
-            cert=self._session.cert
         )
-        if response.status_code == 200:
-            data = response.json()["data"]["result"]
+        if response.status == 200:
+            data = (await response.json())["data"]["result"]
         else:
             raise PrometheusApiClientException(
-                "HTTP Status Code {} ({!r})".format(response.status_code, response.content)
+                "HTTP Status Code {} ({!r})".format(response.status, response.content)
             )
         return data
 
-    def get_metric_aggregation(
+    async def get_metric_aggregation(
         self,
         query: str,
         operations: list,
@@ -508,7 +483,7 @@ class PrometheusConnect:
         aggregated_values = {}
         query_values = []
         if start_time is not None and end_time is not None:
-            data = self.custom_query_range(
+            data = await self.custom_query_range(
                 query=query, params=params, start_time=start_time, end_time=end_time, step=step
             )
             for result in data:
@@ -516,7 +491,7 @@ class PrometheusConnect:
                 for val in values:
                     query_values.append(float(val[1]))
         else:
-            data = self.custom_query(query, params)
+            data = await self.custom_query(query, params)
             for result in data:
                 val = float(result["value"][1])
                 query_values.append(val)

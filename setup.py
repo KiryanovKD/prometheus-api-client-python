@@ -15,7 +15,7 @@ def get_install_requires():
 
 def get_version():
     """Get package version."""
-    with open(os.path.join("prometheus_api_client", "__init__.py")) as f:
+    with open(os.path.join("prometheus_api_async_client", "__init__.py")) as f:
         content = f.readlines()
 
     for line in content:
@@ -27,7 +27,7 @@ def get_version():
 
 VERSION = get_version()
 setuptools.setup(
-    name="prometheus-api-client",
+    name="prometheus-api-async-client",
     version=VERSION,
     author="Anand Sanmukhani",
     author_email="asanmukhani@microsoft.com",

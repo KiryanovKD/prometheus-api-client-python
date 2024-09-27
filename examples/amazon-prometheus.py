@@ -1,5 +1,5 @@
-from prometheus_api_client import PrometheusConnect
-from prometheus_api_client.utils import parse_datetime
+from prometheus_api_async_client import PrometheusConnect
+from prometheus_api_async_client.utils import parse_datetime
 from datetime import timedelta
 
 from requests_auth_aws_sigv4 import AWSSigV4 # pip install requests-auth-aws-sigv4

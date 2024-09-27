@@ -3,7 +3,7 @@ from copy import deepcopy
 import datetime
 import pandas
 
-from prometheus_api_client.exceptions import MetricValueConversionError
+from prometheus_api_async_client.exceptions import MetricValueConversionError
 
 class Metric:
     r"""
@@ -185,7 +185,7 @@ class Metric:
     def plot(self, *args, **kwargs):
         """Plot a very simple line graph for the metric time-series."""
         if not Metric._metric_plot:
-            from prometheus_api_client.metric_plot import MetricPlot
+            from prometheus_api_async_client.metric_plot import MetricPlot
             Metric._metric_plot = MetricPlot(*args, **kwargs)
         metric = self
         Metric._metric_plot.plot_date(metric)

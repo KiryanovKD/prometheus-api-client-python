@@ -35,8 +35,9 @@ The `PrometheusConnect` module of the library can be used to connect to a Promet
 -   **disable_ssl** – (bool) If set to True, will disable ssl certificate verification for the http requests made to the prometheus host
 
 ```python
-from prometheus_api_client import PrometheusConnect
-prom = PrometheusConnect(url ="<prometheus-host>", disable_ssl=True)
+from prometheus_api_async_client import PrometheusConnect
+
+prom = PrometheusConnect(url="<prometheus-host>", disable_ssl=True)
 
 # Get the list of all the metrics that the Prometheus host scrapes
 prom.all_metrics()
@@ -60,7 +61,7 @@ We can also use custom queries for fetching the metric data in a specific time i
 
 ```python
 # Import the required datetime functions
-from prometheus_api_client.utils import parse_datetime
+from prometheus_api_async_client.utils import parse_datetime
 from datetime import timedelta
 
 start_time = parse_datetime("2d")
@@ -82,15 +83,15 @@ The `MetricsList` module initializes a list of Metric objects for the metrics fe
 
 ```python
 # Import the MetricsList and Metric modules
-from prometheus_api_client import PrometheusConnect, MetricsList, Metric
+from prometheus_api_async_client import PrometheusConnect, MetricsList, Metric
 
 prom = PrometheusConnect()
 my_label_config = {'cluster': 'my_cluster_id', 'label_2': 'label_2_value'}
 metric_data = prom.get_metric_range_data(metric_name='up', label_config=my_label_config)
 
-metric_object_list = MetricsList(metric_data) # metric_object_list will be initialized as
-                                              # a list of Metric objects for all the
-                                              # metrics downloaded using get_metric query
+metric_object_list = MetricsList(metric_data)  # metric_object_list will be initialized as
+# a list of Metric objects for all the
+# metrics downloaded using get_metric query
 
 # We can see what each of the metric objects look like
 for item in metric_object_list:
@@ -133,14 +134,14 @@ print(metric_1 == metric_2) # will print True if they belong to the same time-se
 Plot a very simple line graph for the metric time series:
 
 ```python
-from prometheus_api_client import PrometheusConnect, MetricsList, Metric
+from prometheus_api_async_client import PrometheusConnect, MetricsList, Metric
 
 prom = PrometheusConnect()
 my_label_config = {'cluster': 'my_cluster_id', 'label_2': 'label_2_value'}
 metric_data = prom.get_metric_range_data(metric_name='up', label_config=my_label_config)
 
 metric_object_list = MetricsList(metric_data)
-my_metric_object = metric_object_list[1] # one of the metrics from the list
+my_metric_object = metric_object_list[1]  # one of the metrics from the list
 my_metric_object.plot()
 ```
 
@@ -151,7 +152,7 @@ The `MetricSnapshotDataFrame` module converts "current metric value" data to a D
 
 ```python
 import datetime as dt
-from prometheus_api_client import PrometheusConnect,  MetricSnapshotDataFrame, MetricRangeDataFrame
+from prometheus_api_async_client import PrometheusConnect, MetricSnapshotDataFrame, MetricRangeDataFrame
 
 prom = PrometheusConnect()
 my_label_config = {'cluster': 'my_cluster_id', 'label_2': 'label_2_value'}
